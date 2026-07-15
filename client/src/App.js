@@ -2,11 +2,9 @@ import React from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import { Notifications, Options, VideoPlayer } from "./Components";
 import PermissionDenied from "./Components/PermissionDenied";
+import { AppBar, Typography } from "@material-ui/core";
 import { useContext } from "react";
 import { SocketContext } from "./SocketContext";
-import { AppBar, Typography } from "@material-ui/core";
-import { useContext as useCTX } from "react";
-import { SocketContext as SC } from "./SocketContext";
 
 const useStyles = makeStyles((theme) => ({
   appBar: {
@@ -38,8 +36,7 @@ const useStyles = makeStyles((theme) => ({
 
 function App() {
   const classes = useStyles();
-  const { permissionDenied } = useContext(SC);
-  const { connectionStatus } = useCTX(SC);
+  const { permissionDenied, connectionStatus } = useContext(SocketContext);
 
   return (
     <div className={classes.wrapper}>

@@ -68,10 +68,23 @@ const SocketContextProvider = ({ children }) => {
     socket.on("me", (id) => setMe(id));
 
     socket.on("calluser", ({ from, name: callerName, signal }) => {
+      console.log(`Incoming call from=${from} name=${callerName}`);
       setCallEnded(false);
       setCallAccepted(false);
       setCall({ isReceivingCall: true, from, name: callerName, signal });
       setRemotePeerId(from);
+    });
+
+    socket.on("callaccepted", (signal) => {
+      console.log("Received callaccepted event in useEffect");
+      setCallEnded(false);
+      setCallAccepted(true);
+      setCall((prevCall) =>
+        prevCall ? { ...prevCall, isReceivingCall: false } : prevCall,
+      );
+      if (connectPeerRef.current) {
+        connectPeerRef.current.signal(signal);
+      }
     });
 
     // cleanup listeners on unmount
@@ -81,6 +94,7 @@ const SocketContextProvider = ({ children }) => {
       socket.off("connect_error");
       socket.off("me");
       socket.off("calluser");
+      socket.off("callaccepted");
     };
   }, []);
 
@@ -104,15 +118,38 @@ const SocketContextProvider = ({ children }) => {
   };
 
   const answerCall = () => {
+    if (!call?.from || !call?.signal) {
+      console.warn("Cannot answer call: missing caller info or signal");
+      return;
+    }
+
+    if (!stream) {
+      console.warn("Cannot answer call: local media stream not available");
+      return;
+    }
+
+    setCallEnded(false);
     setCallAccepted(true);
+    setCall((prevCall) =>
+      prevCall ? { ...prevCall, isReceivingCall: false } : prevCall,
+    );
+
     const peer = new Peer({ initiator: false, trickle: false, stream });
 
     peer.on("signal", (data) => {
-      socket.emit("answercall", { signal: data, to: call.from });
+      const target = call.from;
+      console.log(`Emitting answercall to=${target}`);
+      if (target) {
+        socket.emit("answercall", { signal: data, to: target });
+      }
     });
 
     peer.on("stream", (currentStream) => {
-      userVideoRef.current.srcObject = currentStream;
+      if (userVideoRef.current) userVideoRef.current.srcObject = currentStream;
+    });
+
+    peer.on("error", (err) => {
+      console.error("Peer error on callee side:", err);
     });
 
     peer.signal(call.signal);
@@ -121,31 +158,52 @@ const SocketContextProvider = ({ children }) => {
     setRemotePeerId(call.from);
   };
   const callUser = (id) => {
+    if (!id) {
+      console.warn("Cannot call user: missing ID");
+      return;
+    }
+
+    if (!stream) {
+      console.warn("Cannot call user: local media stream not available");
+      return;
+    }
+
+    setCallEnded(false);
+    setCallAccepted(false);
+    setCall({
+      isReceivingCall: false,
+      from: id,
+      name: "Calling...",
+      signal: null,
+    });
+    setRemotePeerId(id);
+
     const peer = new Peer({ initiator: true, trickle: false, stream });
 
     peer.on("signal", (data) => {
+      const callerId = me || socket.id;
+      console.log(`Emitting calluser from=${callerId} to=${id}`);
       socket.emit("calluser", {
         userToCall: id,
         signalData: data,
-        from: me,
+        from: callerId,
         name,
       });
     });
 
     peer.on("stream", (currentStream) => {
-      userVideoRef.current.srcObject = currentStream;
+      if (userVideoRef.current) userVideoRef.current.srcObject = currentStream;
     });
 
-    const handleCallAccepted = (signal) => {
-      setCallAccepted(true);
-      peer.signal(signal);
-      socket.off("callaccepted", handleCallAccepted);
-    };
+    peer.on("error", (err) => {
+      console.error("Peer error on caller side:", err);
+    });
 
-    socket.on("callaccepted", handleCallAccepted);
+    peer.on("close", () => {
+      console.log("Peer closed on caller side");
+    });
 
     connectPeerRef.current = peer;
-    setRemotePeerId(id);
   };
 
   const leaveCall = () => {
@@ -155,6 +213,9 @@ const SocketContextProvider = ({ children }) => {
     if (connectPeerRef.current) {
       connectPeerRef.current.destroy();
       connectPeerRef.current = null;
+    }
+    if (userVideoRef.current) {
+      userVideoRef.current.srcObject = null;
     }
     const targetPeer = remotePeerId || call?.from || null;
     if (targetPeer) {
