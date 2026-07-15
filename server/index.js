@@ -1,4 +1,7 @@
-const app = require("express")();
+const express = require("express");
+const path = require("path");
+const fs = require("fs");
+const app = express();
 const server = require("http").createServer(app);
 const cors = require("cors");
 
@@ -10,6 +13,16 @@ const io = require("socket.io")(server, {
 });
 
 app.use(cors());
+
+// In production, serve the React app build (client) as static files when available
+const clientBuildPath = path.join(__dirname, "..", "client", "build");
+if (fs.existsSync(clientBuildPath)) {
+  app.use(express.static(clientBuildPath));
+
+  app.get("/*", (req, res) => {
+    res.sendFile(path.join(clientBuildPath, "index.html"));
+  });
+}
 
 const PORT = process.env.PORT || 8000;
 

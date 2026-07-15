@@ -4,7 +4,9 @@ import { io } from "socket.io-client";
 
 const SocketContext = createContext();
 
-const socket = io("http://localhost:8000");
+// Connect to backend URL from env (for Render combined deployment use relative path '/')
+const backendUrl = process.env.REACT_APP_BACKEND_URL || "/";
+const socket = io(backendUrl);
 
 const SocketContextProvider = ({ children }) => {
   const [stream, setStream] = useState(null);
