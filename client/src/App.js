@@ -1,6 +1,9 @@
 import React from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import { Notifications, Options, VideoPlayer } from "./Components";
+import PermissionDenied from "./Components/PermissionDenied";
+import { useContext } from "react";
+import { SocketContext } from "./SocketContext";
 import { AppBar, Typography } from "@material-ui/core";
 
 const useStyles = makeStyles((theme) => ({
@@ -12,7 +15,9 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: "center",
     alignItems: "center",
     width: "600px",
-    border: "2px solid black",
+    border: "2px solid #FF0000",
+    backgroundColor: "#ffffff",
+    color: "#FF0000",
 
     [theme.breakpoints.down("xs")]: {
       width: "90%",
@@ -31,12 +36,15 @@ const useStyles = makeStyles((theme) => ({
 
 function App() {
   const classes = useStyles();
+  const { permissionDenied } = useContext(SocketContext);
 
   return (
     <div className={classes.wrapper}>
+      {/* Show permission UI if user denied camera/mic */}
+      {permissionDenied && <PermissionDenied />}
       <AppBar position="static" color="inherit" className={classes.appBar}>
-        <Typography variant="h2" align="center">
-          Video Chat
+        <Typography variant="h4" align="center" style={{ fontWeight: 700 }}>
+          StreamConnect
         </Typography>
       </AppBar>
 

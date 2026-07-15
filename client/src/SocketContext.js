@@ -8,6 +8,8 @@ const socket = io("http://localhost:8000");
 
 const SocketContextProvider = ({ children }) => {
   const [stream, setStream] = useState(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [permissionError, setPermissionError] = useState(null);
   const [me, setMe] = useState(null);
   const [call, setCall] = useState(null);
   const [callEnded, setCallEnded] = useState(false);
@@ -18,12 +20,23 @@ const SocketContextProvider = ({ children }) => {
   const connectPeerRef = useRef();
 
   useEffect(() => {
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((currentStream) => {
-        setStream(currentStream);
-        myVideoRef.current.srcObject = currentStream;
-      });
+    const requestMedia = () => {
+      setPermissionDenied(false);
+      setPermissionError(null);
+      navigator.mediaDevices
+        .getUserMedia({ video: true, audio: true })
+        .then((currentStream) => {
+          setStream(currentStream);
+          if (myVideoRef.current) myVideoRef.current.srcObject = currentStream;
+        })
+        .catch((err) => {
+          console.warn("getUserMedia error:", err);
+          setPermissionDenied(true);
+          setPermissionError(err?.message || "Permission denied");
+        });
+    };
+
+    requestMedia();
 
     socket.on("me", (id) => setMe(id));
 
@@ -31,6 +44,25 @@ const SocketContextProvider = ({ children }) => {
       setCall({ isReceivingCall: true, from, name: callerName, signal });
     });
   }, []);
+
+  const requestPermissions = async () => {
+    try {
+      setPermissionDenied(false);
+      setPermissionError(null);
+      const currentStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      setStream(currentStream);
+      if (myVideoRef.current) myVideoRef.current.srcObject = currentStream;
+      return true;
+    } catch (err) {
+      console.warn("requestPermissions error:", err);
+      setPermissionDenied(true);
+      setPermissionError(err?.message || "Permission denied");
+      return false;
+    }
+  };
 
   const answerCall = () => {
     setCallAccepted(true);
@@ -86,6 +118,9 @@ const SocketContextProvider = ({ children }) => {
         myVideoRef,
         userVideoRef,
         stream,
+        permissionDenied,
+        permissionError,
+        requestPermissions,
         name,
         setName,
         me,
