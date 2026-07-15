@@ -33,7 +33,9 @@ app.get("/", (req, res) => {
 });
 
 io.on("connection", (socket) => {
-  console.log(`Socket connected: ${socket.id} (remoteAddress=${socket.conn.remoteAddress})`);
+  console.log(
+    `Socket connected: ${socket.id} (remoteAddress=${socket.conn.remoteAddress})`,
+  );
   socket.emit("me", socket.id);
 
   socket.on("disconnect", (reason) => {

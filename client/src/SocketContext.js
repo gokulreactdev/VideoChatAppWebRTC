@@ -10,8 +10,12 @@ const socket = io(backendUrl);
 // Debug logs for socket connection
 console.log("Socket backendUrl:", backendUrl);
 socket.on("connect", () => console.log("Socket connected (client)", socket.id));
-socket.on("connect_error", (err) => console.error("Socket connect_error (client):", err));
-socket.on("disconnect", (reason) => console.log("Socket disconnected (client):", reason));
+socket.on("connect_error", (err) =>
+  console.error("Socket connect_error (client):", err),
+);
+socket.on("disconnect", (reason) =>
+  console.log("Socket disconnected (client):", reason),
+);
 
 const SocketContextProvider = ({ children }) => {
   const [stream, setStream] = useState(null);
