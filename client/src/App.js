@@ -5,6 +5,8 @@ import PermissionDenied from "./Components/PermissionDenied";
 import { useContext } from "react";
 import { SocketContext } from "./SocketContext";
 import { AppBar, Typography } from "@material-ui/core";
+import { useContext as useCTX } from "react";
+import { SocketContext as SC } from "./SocketContext";
 
 const useStyles = makeStyles((theme) => ({
   appBar: {
@@ -36,16 +38,25 @@ const useStyles = makeStyles((theme) => ({
 
 function App() {
   const classes = useStyles();
-  const { permissionDenied } = useContext(SocketContext);
+  const { permissionDenied } = useContext(SC);
+  const { connectionStatus } = useCTX(SC);
 
   return (
     <div className={classes.wrapper}>
       {/* Show permission UI if user denied camera/mic */}
       {permissionDenied && <PermissionDenied />}
       <AppBar position="static" color="inherit" className={classes.appBar}>
-        <Typography variant="h4" align="center" style={{ fontWeight: 700 }}>
-          StreamConnect
-        </Typography>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Typography variant="h4" align="center" style={{ fontWeight: 700 }}>
+            StreamConnect
+          </Typography>
+          <Typography
+            variant="body2"
+            style={{ color: connectionStatus === "connected" ? "#2e7d32" : connectionStatus === "error" ? "#d32f2f" : "#666" }}
+          >
+            {connectionStatus}
+          </Typography>
+        </div>
       </AppBar>
 
       <VideoPlayer />

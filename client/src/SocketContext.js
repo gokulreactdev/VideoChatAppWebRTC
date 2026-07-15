@@ -4,9 +4,18 @@ import { io } from "socket.io-client";
 
 const SocketContext = createContext();
 
-// Connect to backend URL from env (for Render combined deployment use relative path '/')
-const backendUrl = process.env.REACT_APP_BACKEND_URL || "/";
-const socket = io(backendUrl);
+// Connect to backend URL from env. For combined deploys prefer same origin.
+const backendUrl =
+  process.env.REACT_APP_BACKEND_URL ||
+  (typeof window !== "undefined" ? window.location.origin : "/");
+
+const socketOptions = {
+  transports: ["websocket", "polling"],
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+};
+
+const socket = io(backendUrl, socketOptions);
 // Debug logs for socket connection
 console.log("Socket backendUrl:", backendUrl);
 socket.on("connect", () => console.log("Socket connected (client)", socket.id));
@@ -22,6 +31,7 @@ const SocketContextProvider = ({ children }) => {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [permissionError, setPermissionError] = useState(null);
   const [me, setMe] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [call, setCall] = useState(null);
   const [callEnded, setCallEnded] = useState(false);
   const [callAccepted, setCallAccepted] = useState(false);
@@ -49,11 +59,25 @@ const SocketContextProvider = ({ children }) => {
 
     requestMedia();
 
+    // socket event handlers
+    socket.on("connect", () => setConnectionStatus("connected"));
+    socket.on("disconnect", () => setConnectionStatus("disconnected"));
+    socket.on("connect_error", () => setConnectionStatus("error"));
+
     socket.on("me", (id) => setMe(id));
 
     socket.on("calluser", ({ from, name: callerName, signal }) => {
       setCall({ isReceivingCall: true, from, name: callerName, signal });
     });
+
+    // cleanup listeners on unmount
+    return () => {
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("connect_error");
+      socket.off("me");
+      socket.off("calluser");
+    };
   }, []);
 
   const requestPermissions = async () => {
@@ -131,6 +155,7 @@ const SocketContextProvider = ({ children }) => {
         stream,
         permissionDenied,
         permissionError,
+        connectionStatus,
         requestPermissions,
         name,
         setName,
