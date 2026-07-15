@@ -33,17 +33,21 @@ app.get("/", (req, res) => {
 });
 
 io.on("connection", (socket) => {
+  console.log(`Socket connected: ${socket.id} (remoteAddress=${socket.conn.remoteAddress})`);
   socket.emit("me", socket.id);
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", (reason) => {
+    console.log(`Socket disconnected: ${socket.id} reason=${reason}`);
     socket.broadcast.emit("callended");
   });
 
   socket.on("calluser", ({ userToCall, signalData, from, name }) => {
+    console.log(`calluser from=${from} to=${userToCall}`);
     io.to(userToCall).emit("calluser", { signal: signalData, from, name });
   });
 
   socket.on("answercall", (data) => {
+    console.log(`answercall from=${socket.id} to=${data.to}`);
     io.to(data.to).emit("callaccepted", data.signal);
   });
 });

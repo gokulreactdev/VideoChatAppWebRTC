@@ -7,6 +7,11 @@ const SocketContext = createContext();
 // Connect to backend URL from env (for Render combined deployment use relative path '/')
 const backendUrl = process.env.REACT_APP_BACKEND_URL || "/";
 const socket = io(backendUrl);
+// Debug logs for socket connection
+console.log("Socket backendUrl:", backendUrl);
+socket.on("connect", () => console.log("Socket connected (client)", socket.id));
+socket.on("connect_error", (err) => console.error("Socket connect_error (client):", err));
+socket.on("disconnect", (reason) => console.log("Socket disconnected (client):", reason));
 
 const SocketContextProvider = ({ children }) => {
   const [stream, setStream] = useState(null);
