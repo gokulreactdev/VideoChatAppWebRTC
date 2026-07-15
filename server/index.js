@@ -19,7 +19,9 @@ const clientBuildPath = path.join(__dirname, "..", "client", "build");
 if (fs.existsSync(clientBuildPath)) {
   app.use(express.static(clientBuildPath));
 
-  app.get("/*", (req, res) => {
+  // Use a wildcard route that is compatible with path-to-regexp
+  // Fallback: serve index.html for any request not handled by static files
+  app.use((req, res) => {
     res.sendFile(path.join(clientBuildPath, "index.html"));
   });
 }
