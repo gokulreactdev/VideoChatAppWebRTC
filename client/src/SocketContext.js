@@ -35,6 +35,7 @@ const SocketContextProvider = ({ children }) => {
   const [call, setCall] = useState(null);
   const [callEnded, setCallEnded] = useState(false);
   const [callAccepted, setCallAccepted] = useState(false);
+  const [remotePeerId, setRemotePeerId] = useState(null);
   const [name, setName] = useState("");
   const myVideoRef = useRef();
   const userVideoRef = useRef();
@@ -67,7 +68,10 @@ const SocketContextProvider = ({ children }) => {
     socket.on("me", (id) => setMe(id));
 
     socket.on("calluser", ({ from, name: callerName, signal }) => {
+      setCallEnded(false);
+      setCallAccepted(false);
       setCall({ isReceivingCall: true, from, name: callerName, signal });
+      setRemotePeerId(from);
     });
 
     // cleanup listeners on unmount
@@ -114,6 +118,7 @@ const SocketContextProvider = ({ children }) => {
     peer.signal(call.signal);
 
     connectPeerRef.current = peer;
+    setRemotePeerId(call.from);
   };
   const callUser = (id) => {
     const peer = new Peer({ initiator: true, trickle: false, stream });
@@ -131,19 +136,56 @@ const SocketContextProvider = ({ children }) => {
       userVideoRef.current.srcObject = currentStream;
     });
 
-    socket.on("callaccepted", (signal) => {
+    const handleCallAccepted = (signal) => {
       setCallAccepted(true);
       peer.signal(signal);
-    });
+      socket.off("callaccepted", handleCallAccepted);
+    };
+
+    socket.on("callaccepted", handleCallAccepted);
 
     connectPeerRef.current = peer;
+    setRemotePeerId(id);
   };
 
   const leaveCall = () => {
     setCallEnded(true);
-    connectPeerRef.current.destroy();
-    window.location.reload();
+    setCallAccepted(false);
+    setCall(null);
+    if (connectPeerRef.current) {
+      connectPeerRef.current.destroy();
+      connectPeerRef.current = null;
+    }
+    const targetPeer = remotePeerId || call?.from || null;
+    if (targetPeer) {
+      socket.emit("callended", { to: targetPeer });
+    }
+    setRemotePeerId(null);
+    // avoid forced page reload so the remote peer can also cleanup normally
   };
+
+  useEffect(() => {
+    const handleCallEnded = () => {
+      console.log("Received callended event");
+      setCallEnded(true);
+      setCallAccepted(false);
+      setCall(null);
+      setRemotePeerId(null);
+      if (connectPeerRef.current) {
+        connectPeerRef.current.destroy();
+        connectPeerRef.current = null;
+      }
+      if (userVideoRef.current) {
+        userVideoRef.current.srcObject = null;
+      }
+    };
+
+    socket.on("callended", handleCallEnded);
+
+    return () => {
+      socket.off("callended", handleCallEnded);
+    };
+  }, [call]);
 
   return (
     <SocketContext.Provider

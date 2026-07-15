@@ -52,7 +52,14 @@ function App() {
           </Typography>
           <Typography
             variant="body2"
-            style={{ color: connectionStatus === "connected" ? "#2e7d32" : connectionStatus === "error" ? "#d32f2f" : "#666" }}
+            style={{
+              color:
+                connectionStatus === "connected"
+                  ? "#2e7d32"
+                  : connectionStatus === "error"
+                    ? "#d32f2f"
+                    : "#666",
+            }}
           >
             {connectionStatus}
           </Typography>

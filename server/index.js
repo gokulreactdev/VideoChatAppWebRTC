@@ -52,6 +52,11 @@ io.on("connection", (socket) => {
     console.log(`answercall from=${socket.id} to=${data.to}`);
     io.to(data.to).emit("callaccepted", data.signal);
   });
+
+  socket.on("callended", ({ to }) => {
+    console.log(`callended from=${socket.id} to=${to}`);
+    io.to(to).emit("callended");
+  });
 });
 
 server.listen(PORT, () => {
